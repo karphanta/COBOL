@@ -44,7 +44,7 @@ jobs:
           echo ""
         }
         
-        # Procesar cada extensión
+        # Procesar cada extensiónAAAA
         for ext in "${extensions[@]}"; do
           # Buscar archivos con la extensión actual
           find . -name "$ext" -type f ! -path "./line-counts/*" ! -path "./.git/*" | while read -r file; do
