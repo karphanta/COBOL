@@ -33,29 +33,24 @@ jobs:
               ws = file_sec = linkage = 0
             }
             {
-              # Normalizar: mayúsculas y quitar espacios/tabs iniciales
               line = toupper($0)
               sub(/^[ \t]+/, "", line)
 
-              # Detectar divisiones principales (permitiendo punto final)
               if (line ~ /^IDENTIFICATION DIVISION\.?/) { division = "ID"; subsection = ""; next }
               if (line ~ /^ENVIRONMENT DIVISION\.?/)    { division = "ENV"; subsection = ""; next }
               if (line ~ /^DATA DIVISION\.?/)           { division = "DATA"; subsection = ""; next }
               if (line ~ /^PROCEDURE DIVISION\.?/)      { division = "PROC"; subsection = ""; next }
 
-              # Detectar sub-secciones dentro de DATA DIVISION
               if (division == "DATA") {
                 if (line ~ /^WORKING-STORAGE SECTION\.?/) { subsection = "WS"; next }
                 if (line ~ /^FILE SECTION\.?/)            { subsection = "FILE"; next }
                 if (line ~ /^LINKAGE SECTION\.?/)         { subsection = "LINKAGE"; next }
               }
 
-              # Contar líneas por división
               if (division == "ID")   { id++ }
               else if (division == "ENV")  { env++ }
               else if (division == "DATA") { 
                 data++
-                # Contar también por sub-sección
                 if (subsection == "WS")      { ws++ }
                 else if (subsection == "FILE")    { file_sec++ }
                 else if (subsection == "LINKAGE") { linkage++ }
@@ -93,6 +88,23 @@ jobs:
           echo ""
         }
 
+        # 🆕 Función para contar y listar COPYs
+        count_copys() {
+          local file="$1"
+          echo "=== COPYs en $file ==="
+          # Buscar COPY ignorando mayúsculas, quitar comentarios y extraer nombre
+          local copies=$(grep -i '^[ \t]*COPY[ \t]\+' "$file" | grep -v '^\*' | awk '{print $2}' | sort -u)
+          if [ -z "$copies" ]; then
+            echo "No se encontraron COPYs."
+          else
+            local count=$(echo "$copies" | wc -l)
+            echo "Total COPYs: $count"
+            echo "Lista de COPYs:"
+            echo "$copies"
+          fi
+          echo ""
+        }
+
         # Buscar archivos COBOL y procesarlos
         find . -type f \( -name "*.cbl" -o -name "*.cob" -o -name "*.CBL" \) ! -path "./line-counts/*" ! -path "./.git/*" | while read -r file; do
           if [ -f "$file" ]; then
@@ -102,6 +114,7 @@ jobs:
             echo "Procesando: $file"
             count_lines "$file" > "$output_file"
             count_cobol_sections "$file" >> "$output_file"
+            count_copys "$file" >> "$output_file"
 
             echo "📊 Archivo procesado: $file"
             cat "$output_file"
