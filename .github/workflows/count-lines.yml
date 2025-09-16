@@ -32,10 +32,10 @@ jobs:
             }
             {
               line = toupper($0)
-              if (line ~ /^IDENTIFICATION DIVISION/) { section = "ID"; next }
-              if (line ~ /^ENVIRONMENT DIVISION/)    { section = "ENV"; next }
-              if (line ~ /^DATA DIVISION/)           { section = "DATA"; next }
-              if (line ~ /^PROCEDURE DIVISION/)      { section = "PROC"; next }
+              if (line ~ /^IDENTIFICATION DIVISION./) { section = "ID"; next }
+              if (line ~ /^ENVIRONMENT DIVISION./)    { section = "ENV"; next }
+              if (line ~ /^DATA DIVISION./)           { section = "DATA"; next }
+              if (line ~ /^PROCEDURE DIVISION./)      { section = "PROC"; next }
 
               if (section == "ID")   { id++ }
               if (section == "ENV")  { env++ }
