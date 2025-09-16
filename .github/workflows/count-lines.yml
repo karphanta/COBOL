@@ -25,7 +25,7 @@ jobs:
         mkdir -p line-counts
         
         # Extensiones de archivos de programación comunes
-        extensions=("*.py" "*.js" "*.ts" "*.java" "*.cpp" "*.c" "*.cs" "*.php" "*.rb" "*.go" "*.rs" "*.swift" "*.kt" "*.scala" "*.html" "*.css" "*.jsx" "*.tsx" "*.vue" "*.sh" "*.ps1" "*.sql" "*.r" "*.m" "*.pl" "*.lua" "*.dart" "*.elm" "*.clj" "*.hs" "*.ml" "*.fs" "*.vb" "*.pas" "*.asm" "*.s")
+        extensions=("*.*")
         
         # Función para contar líneas
         count_lines() {
