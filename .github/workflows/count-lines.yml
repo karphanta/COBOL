@@ -1,4 +1,4 @@
-name: Contador de Líneas de Código
+name: Análisis COBOL
 
 on:
   push:
@@ -8,105 +8,79 @@ on:
   workflow_dispatch:
 
 jobs:
-  count-lines:
+  analizar-cobol:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout código
+    - name: Checkout del código
       uses: actions/checkout@v4
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-      
-    - name: Contar líneas de código
+
+    - name: Analizar archivos COBOL
       run: |
         #!/bin/bash
-        
-        # Crear directorio para los archivos de conteo si no existe
+
         mkdir -p line-counts
-        
-        # Extensiones de archivos de programación comunes
-        extensions=("*.*")
-        
-        # Función para contar líneas
+
+        # Función para contar líneas por sección COBOL
+        count_cobol_sections() {
+          local file="$1"
+          local id_lines=$(grep -i "^IDENTIFICATION DIVISION" "$file" -A 50 | wc -l)
+          local env_lines=$(grep -i "^ENVIRONMENT DIVISION" "$file" -A 50 | wc -l)
+          local data_lines=$(grep -i "^DATA DIVISION" "$file" -A 200 | wc -l)
+          local proc_lines=$(grep -i "^PROCEDURE DIVISION" "$file" -A 500 | wc -l)
+
+          echo "=== SECCIONES DE $file ==="
+          echo "IDENTIFICATION DIVISION: $id_lines líneas (aprox.)"
+          echo "ENVIRONMENT DIVISION: $env_lines líneas (aprox.)"
+          echo "DATA DIVISION: $data_lines líneas (aprox.)"
+          echo "PROCEDURE DIVISION: $proc_lines líneas (aprox.)"
+          echo ""
+        }
+
+        # Función para contar líneas generales
         count_lines() {
           local file="$1"
           local total_lines=$(wc -l < "$file")
-          local code_lines=$(grep -v '^\s*$' "$file" | grep -v '^\s*#' | grep -v '^\s*//' | grep -v '^\s*/\*' | grep -v '^\s*\*' | wc -l)
           local blank_lines=$(grep -c '^\s*$' "$file")
-          local comment_lines=$((total_lines - code_lines - blank_lines))
-          
-          echo "=== ESTADÍSTICAS DE $file ===" 
+          local comment_lines=$(grep -c '^......\*' "$file")
+          local code_lines=$((total_lines - blank_lines - comment_lines))
+
+          echo "=== ESTADÍSTICAS DE $file ==="
           echo "Líneas totales: $total_lines"
           echo "Líneas de código: $code_lines"
-          echo "Líneas en blanco: $blank_lines" 
-          echo "Líneas de comentarios (aprox.): $comment_lines"
+          echo "Líneas en blanco: $blank_lines"
+          echo "Líneas de comentarios: $comment_lines"
           echo "Fecha de análisis: $(date)"
           echo ""
         }
-        
-        # Procesar cada extensiónAAAA
-        for ext in "${extensions[@]}"; do
-          # Buscar archivos con la extensión actual
-          find . -name "$ext" -type f ! -path "./line-counts/*" ! -path "./.git/*" | while read -r file; do
-            if [ -f "$file" ]; then
-              # Obtener el nombre del archivo sin la ruta
-              filename=$(basename "$file")
-              # Crear archivo .txt con el mismo nombre
-              output_file="line-counts/${filename}.txt"
-              
-              echo "Procesando: $file"
-              count_lines "$file" > "$output_file"
-              
-              # También mostrar en el log de GitHub Actions
-              echo "📊 Archivo procesado: $file"
-              cat "$output_file"
-              echo "---"
-            fi
-          done
-        done
-        
-        # Crear resumen general
-        echo "=== RESUMEN GENERAL ===" > line-counts/RESUMEN.txt
-        echo "Fecha: $(date)" >> line-counts/RESUMEN.txt
-        echo "" >> line-counts/RESUMEN.txt
-        
-        total_files=0
-        total_lines=0
-        
-        find . -name "*.py" -o -name "*.js" -o -name "*.ts" -o -name "*.java" -o -name "*.cpp" -o -name "*.c" -o -name "*.cs" -o -name "*.php" -o -name "*.rb" -o -name "*.go" -o -name "*.rs" -o -name "*.swift" -o -name "*.kt" -o -name "*.html" -o -name "*.css" | while read -r file; do
-          if [ -f "$file" ] && [[ ! "$file" =~ line-counts/ ]] && [[ ! "$file" =~ .git/ ]]; then
-            lines=$(wc -l < "$file")
-            echo "$file: $lines líneas" >> line-counts/RESUMEN.txt
-            total_files=$((total_files + 1))
-            total_lines=$((total_lines + lines))
+
+        # Buscar archivos COBOL
+        find . -type f \( -name "*.cbl" -o -name "*.cob" -o -name "*.CBL" \) ! -path "./line-counts/*" ! -path "./.git/*" | while read -r file; do
+          if [ -f "$file" ]; then
+            filename=$(basename "$file")
+            output_file="line-counts/${filename}.txt"
+
+            echo "Procesando: $file"
+            count_lines "$file" > "$output_file"
+            count_cobol_sections "$file" >> "$output_file"
+
+            echo "📊 Archivo procesado: $file"
+            cat "$output_file"
+            echo "---"
           fi
         done
-        
-        echo "" >> line-counts/RESUMEN.txt
-        echo "Total de archivos analizados: $total_files" >> line-counts/RESUMEN.txt
-        echo "Total de líneas: $total_lines" >> line-counts/RESUMEN.txt
-        
+
     - name: Listar archivos generados
       run: |
         echo "📁 Archivos generados:"
         ls -la line-counts/
         echo ""
-        echo "📊 Contenido del resumen:"
-        cat line-counts/RESUMEN.txt
-        
-    - name: Subir archivos de conteo
+        echo "📊 Contenido de los archivos:"
+        cat line-counts/*.txt
+
+    - name: Subir resultados como artefacto
       uses: actions/upload-artifact@v4
       with:
-        name: cobol-line-counts
+        name: estadisticas-cobol
         path: line-counts/
         retention-days: 30
-        
-    # COMENTADO: Commit automático (requiere permisos especiales)
-    # - name: Commit y push de los archivos de conteo (opcional)
-    #   if: github.event_name == 'push'
-    #   run: |
-    #     git config --local user.email "action@github.com"
-    #     git config --local user.name "GitHub Action"
-    #     git add line-counts/
-    #     git diff --staged --quiet || git commit -m "📊 Actualizar conteos de líneas [skip ci]"
-    #     git push
