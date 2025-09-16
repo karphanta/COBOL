@@ -24,17 +24,33 @@ jobs:
         # Función para contar líneas por sección COBOL
         count_cobol_sections() {
           local file="$1"
-          local id_lines=$(grep -i "^IDENTIFICATION DIVISION" "$file" -A 50 | wc -l)
-          local env_lines=$(grep -i "^ENVIRONMENT DIVISION" "$file" -A 50 | wc -l)
-          local data_lines=$(grep -i "^DATA DIVISION" "$file" -A 200 | wc -l)
-          local proc_lines=$(grep -i "^PROCEDURE DIVISION" "$file" -A 500 | wc -l)
 
-          echo "=== SECCIONES DE $file ==="
-          echo "IDENTIFICATION DIVISION: $id_lines líneas (aprox.)"
-          echo "ENVIRONMENT DIVISION: $env_lines líneas (aprox.)"
-          echo "DATA DIVISION: $data_lines líneas (aprox.)"
-          echo "PROCEDURE DIVISION: $proc_lines líneas (aprox.)"
-          echo ""
+          awk '
+            BEGIN {
+              section = "UNKNOWN"
+              id = 0; env = 0; data = 0; proc = 0
+            }
+            {
+              line = toupper($0)
+              if (line ~ /^IDENTIFICATION DIVISION/) { section = "ID"; next }
+              if (line ~ /^ENVIRONMENT DIVISION/)    { section = "ENV"; next }
+              if (line ~ /^DATA DIVISION/)           { section = "DATA"; next }
+              if (line ~ /^PROCEDURE DIVISION/)      { section = "PROC"; next }
+
+              if (section == "ID")   { id++ }
+              if (section == "ENV")  { env++ }
+              if (section == "DATA") { data++ }
+              if (section == "PROC") { proc++ }
+            }
+            END {
+              print "=== SECCIONES DE " FILENAME " ==="
+              print "IDENTIFICATION DIVISION: " id " líneas"
+              print "ENVIRONMENT DIVISION: " env " líneas"
+              print "DATA DIVISION: " data " líneas"
+              print "PROCEDURE DIVISION: " proc " líneas"
+              print ""
+            }
+          ' "$file"
         }
 
         # Función para contar líneas generales
