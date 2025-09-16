@@ -88,6 +88,7 @@ jobs:
         
     - name: Listar archivos generados
       run: |
+        cd cobol-repo
         echo "📁 Archivos generados:"
         ls -la line-counts/
         echo ""
@@ -97,8 +98,8 @@ jobs:
     - name: Subir archivos de conteo
       uses: actions/upload-artifact@v4
       with:
-        name: line-counts
-        path: line-counts/
+        name: cobol-line-counts
+        path: cobol-repo/line-counts/
         retention-days: 30
         
     # COMENTADO: Commit automático (requiere permisos especiales)
