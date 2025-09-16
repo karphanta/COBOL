@@ -21,32 +21,55 @@ jobs:
 
         mkdir -p line-counts
 
-        # Función para contar líneas por sección COBOL
+        # Función para contar líneas por división y sub-sección COBOL
         count_cobol_sections() {
           local file="$1"
 
           awk '
             BEGIN {
-              section = "UNKNOWN"
-              id = 0; env = 0; data = 0; proc = 0
+              division = ""
+              subsection = ""
+              id = env = data = proc = 0
+              ws = file_sec = linkage = 0
             }
             {
+              # Normalizar: mayúsculas y quitar espacios/tabs iniciales
               line = toupper($0)
-              if (line ~ /^IDENTIFICATION DIVISION./) { section = "ID"; next }
-              if (line ~ /^ENVIRONMENT DIVISION./)    { section = "ENV"; next }
-              if (line ~ /^DATA DIVISION./)           { section = "DATA"; next }
-              if (line ~ /^PROCEDURE DIVISION./)      { section = "PROC"; next }
+              sub(/^[ \t]+/, "", line)
 
-              if (section == "ID")   { id++ }
-              if (section == "ENV")  { env++ }
-              if (section == "DATA") { data++ }
-              if (section == "PROC") { proc++ }
+              # Detectar divisiones principales (permitiendo punto final)
+              if (line ~ /^IDENTIFICATION DIVISION\.?/) { division = "ID"; subsection = ""; next }
+              if (line ~ /^ENVIRONMENT DIVISION\.?/)    { division = "ENV"; subsection = ""; next }
+              if (line ~ /^DATA DIVISION\.?/)           { division = "DATA"; subsection = ""; next }
+              if (line ~ /^PROCEDURE DIVISION\.?/)      { division = "PROC"; subsection = ""; next }
+
+              # Detectar sub-secciones dentro de DATA DIVISION
+              if (division == "DATA") {
+                if (line ~ /^WORKING-STORAGE SECTION\.?/) { subsection = "WS"; next }
+                if (line ~ /^FILE SECTION\.?/)            { subsection = "FILE"; next }
+                if (line ~ /^LINKAGE SECTION\.?/)         { subsection = "LINKAGE"; next }
+              }
+
+              # Contar líneas por división
+              if (division == "ID")   { id++ }
+              else if (division == "ENV")  { env++ }
+              else if (division == "DATA") { 
+                data++
+                # Contar también por sub-sección
+                if (subsection == "WS")      { ws++ }
+                else if (subsection == "FILE")    { file_sec++ }
+                else if (subsection == "LINKAGE") { linkage++ }
+              }
+              else if (division == "PROC") { proc++ }
             }
             END {
               print "=== SECCIONES DE " FILENAME " ==="
               print "IDENTIFICATION DIVISION: " id " líneas"
               print "ENVIRONMENT DIVISION: " env " líneas"
               print "DATA DIVISION: " data " líneas"
+              print "  - WORKING-STORAGE SECTION: " ws " líneas"
+              print "  - FILE SECTION: " file_sec " líneas"
+              print "  - LINKAGE SECTION: " linkage " líneas"
               print "PROCEDURE DIVISION: " proc " líneas"
               print ""
             }
@@ -70,7 +93,7 @@ jobs:
           echo ""
         }
 
-        # Buscar archivos COBOL
+        # Buscar archivos COBOL y procesarlos
         find . -type f \( -name "*.cbl" -o -name "*.cob" -o -name "*.CBL" \) ! -path "./line-counts/*" ! -path "./.git/*" | while read -r file; do
           if [ -f "$file" ]; then
             filename=$(basename "$file")
