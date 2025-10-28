@@ -20,7 +20,7 @@
            EXIT.
 
        INICIO.
-           DISPLAY "Ingrese su edad:"
+           DISPLAY "Ingrese su edad:::"
            ACCEPT WS-EDAD
            CONTINUE.
        INICIO-EXIT.
